@@ -17,3 +17,9 @@ impl PseudoCursor {
         self.current = Some(record);
     }
 }
+
+impl Default for PseudoCursor {
+    fn default() -> Self {
+        Self::new()
+    }
+}

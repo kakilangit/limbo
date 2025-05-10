@@ -59,6 +59,7 @@ pub struct TextRef {
 }
 
 impl Text {
+    #[allow(clippy::should_implement_trait)]
     pub fn from_str<S: Into<String>>(value: S) -> Self {
         Self::new(&value.into())
     }
@@ -77,6 +78,7 @@ impl Text {
         }
     }
 
+    #[allow(clippy::inherent_to_string)]
     pub fn to_string(&self) -> String {
         self.as_str().to_string()
     }
@@ -100,6 +102,7 @@ impl TextRef {
         unsafe { std::str::from_utf8_unchecked(self.value.to_slice()) }
     }
 
+    #[allow(clippy::inherent_to_string)]
     pub fn to_string(&self) -> String {
         self.as_str().to_string()
     }
@@ -262,10 +265,10 @@ impl Display for OwnedValue {
                             } else {
                                 format!("{}.{}", whole, fraction)
                             };
-                            let (prefix, exponent) = if exponent.starts_with('-') {
-                                ("-0", &exponent[1..])
-                            } else {
-                                ("+", exponent)
+
+                            let (prefix, exponent) = match exponent.chars().next() {
+                                Some('-') => ("-0", &exponent[1..]),
+                                _ => ("+", exponent),
                             };
                             return write!(f, "{}e{}{}", trimmed_mantissa, prefix, exponent);
                         }
@@ -446,6 +449,7 @@ impl PartialEq<OwnedValue> for OwnedValue {
         }
     }
 
+    #[allow(clippy::partialeq_ne_impl)]
     fn ne(&self, other: &OwnedValue) -> bool {
         !self.eq(other)
     }
@@ -698,6 +702,10 @@ impl Record {
     pub fn len(&self) -> usize {
         self.values.len()
     }
+
+    pub fn is_empty(&self) -> bool {
+        self.values.is_empty()
+    }
 }
 struct AppendWriter<'a> {
     buf: &'a mut Vec<u8>,
@@ -770,6 +778,10 @@ impl ImmutableRecord {
 
     pub fn len(&self) -> usize {
         self.values.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.values.is_empty()
     }
 
     pub fn from_registers(registers: &[Register]) -> Self {
@@ -1058,7 +1070,7 @@ impl PartialOrd<RefValue> for RefValue {
 /// A bitfield that represents the comparison spec for index keys.
 /// Since indexed columns can individually specify ASC/DESC, each key must
 /// be compared differently.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default)]
 #[repr(transparent)]
 pub struct IndexKeySortOrder(u64);
 
@@ -1085,16 +1097,6 @@ impl IndexKeySortOrder {
             spec |= ((*order == SortOrder::Desc) as u64) << i;
         }
         IndexKeySortOrder(spec)
-    }
-
-    pub fn default() -> Self {
-        Self(0)
-    }
-}
-
-impl Default for IndexKeySortOrder {
-    fn default() -> Self {
-        Self::default()
     }
 }
 

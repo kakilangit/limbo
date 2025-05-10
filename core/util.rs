@@ -157,7 +157,7 @@ pub fn parse_schema_rows(
                     sql,
                 } => {
                     let table = schema.get_btree_table(&table_name).unwrap();
-                    let index = schema::Index::from_sql(&sql, root_page as usize, table.as_ref())?;
+                    let index = schema::Index::from_sql(&sql, root_page, table.as_ref())?;
                     schema.add_index(Arc::new(index));
                 }
                 UnparsedIndex::FromConstraint {
@@ -169,7 +169,7 @@ pub fn parse_schema_rows(
                     let index = schema::Index::automatic_from_primary_key(
                         table.as_ref(),
                         &name,
-                        root_page as usize,
+                        root_page,
                     )?;
                     schema.add_index(Arc::new(index));
                 }
@@ -439,7 +439,7 @@ pub fn exprs_are_equivalent(expr1: &Expr, expr2: &Expr) -> bool {
         }
         // Variables that are not bound to a specific value, are treated as NULL
         // https://sqlite.org/lang_expr.html#varparam
-        (Expr::Variable(var), Expr::Variable(var2)) if var == "" && var2 == "" => false,
+        (Expr::Variable(var), Expr::Variable(var2)) if var.is_empty() && var2.is_empty() => false,
         // Named variables can be compared by their name
         (Expr::Variable(val), Expr::Variable(val2)) => val == val2,
         (Expr::Parenthesized(exprs1), Expr::Parenthesized(exprs2)) => {
@@ -1310,7 +1310,7 @@ pub mod tests {
         assert_eq!(opts.path, "/home/user/db.sqlite");
         assert_eq!(opts.vfs, Some("unix".to_string()));
         assert_eq!(opts.mode, OpenMode::ReadOnly);
-        assert_eq!(opts.immutable, true);
+        assert!(opts.immutable);
     }
 
     #[test]
@@ -1392,7 +1392,7 @@ pub mod tests {
         assert_eq!(opts.vfs, Some("unix".to_string()));
         assert_eq!(opts.mode, OpenMode::ReadWrite);
         assert_eq!(opts.cache, CacheMode::Private);
-        assert_eq!(opts.immutable, false);
+        assert!(!opts.immutable);
     }
 
     #[test]

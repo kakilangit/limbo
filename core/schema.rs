@@ -366,7 +366,7 @@ fn create_table(
                         } => {
                             primary_key = true;
                             if let Some(o) = o {
-                                order = o.clone();
+                                order = *o;
                             }
                         }
                         limbo_sqlite3_parser::ast::ColumnConstraint::NotNull { .. } => {
@@ -781,7 +781,7 @@ impl Index {
                 };
                 Ok(IndexColumn {
                     name: normalize_ident(col_name),
-                    order: order.clone(),
+                    order: *order,
                     pos_in_table,
                 })
             })
@@ -1045,7 +1045,7 @@ mod tests {
         let sql = r#"CREATE TABLE t1 (a INTEGER NOT NULL);"#;
         let table = BTreeTable::from_sql(sql, 0)?;
         let column = table.get_column("a").unwrap().1;
-        assert_eq!(column.notnull, true);
+        assert!(column.notnull);
         Ok(())
     }
 
@@ -1054,7 +1054,7 @@ mod tests {
         let sql = r#"CREATE TABLE t1 (a INTEGER);"#;
         let table = BTreeTable::from_sql(sql, 0)?;
         let column = table.get_column("a").unwrap().1;
-        assert_eq!(column.notnull, false);
+        assert!(!column.notnull);
         Ok(())
     }
 

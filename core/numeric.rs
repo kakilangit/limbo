@@ -413,7 +413,7 @@ impl std::ops::Mul for DoubleDouble {
 
 impl std::ops::MulAssign for DoubleDouble {
     fn mul_assign(&mut self, rhs: Self) {
-        *self = self.clone() * rhs;
+        *self = *self * rhs;
     }
 }
 
@@ -536,6 +536,7 @@ pub fn str_to_f64(input: impl AsRef<str>) -> Option<StrToF64> {
 
     let mut result = DoubleDouble::from(significant);
 
+    #[allow(clippy::excessive_precision)]
     if exponent > 0 {
         while exponent >= 100 {
             exponent -= 100;
