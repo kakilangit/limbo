@@ -265,12 +265,10 @@ mod tests {
                     let key = if random || lru.is_empty() {
                         let id_page = rng.next_u64() % max_pages;
                         let id_frame = rng.next_u64() % max_pages;
-                        let key = PageCacheKey::new(id_page as usize, Some(id_frame));
-                        key
+                        PageCacheKey::new(id_page as usize, Some(id_frame))
                     } else {
                         let i = rng.next_u64() as usize % lru.len();
-                        let key = lru.iter().skip(i).next().unwrap().0.clone();
-                        key
+                        lru.iter().nth(i).map(|(key, _)| key.clone()).unwrap() // unwrap is safe because we checked lru.is_empty() above
                     };
                     // println!("removing page {:?}", key);
                     lru.pop(&key);
@@ -280,7 +278,7 @@ mod tests {
                     // test contents
                     for (key, page) in &lru {
                         // println!("getting page {:?}", key);
-                        cache.peek(&key, false).unwrap();
+                        cache.peek(key, false).unwrap();
                         assert_eq!(page.get().id, key.pgno);
                     }
                 }

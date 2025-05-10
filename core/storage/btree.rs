@@ -968,12 +968,8 @@ impl BTreeCursor {
     /// We don't include the rowid in the comparison and that's why the last value from the record is not included.
     fn do_seek(&mut self, key: SeekKey<'_>, op: SeekOp) -> Result<CursorResult<Option<u64>>> {
         match key {
-            SeekKey::TableRowId(rowid) => {
-                return self.tablebtree_seek(rowid, op);
-            }
-            SeekKey::IndexKey(index_key) => {
-                return self.indexbtree_seek(index_key, op);
-            }
+            SeekKey::TableRowId(rowid) => self.tablebtree_seek(rowid, op),
+            SeekKey::IndexKey(index_key) => self.indexbtree_seek(index_key, op),
         }
     }
 
@@ -1035,9 +1031,8 @@ impl BTreeCursor {
             loop {
                 if min > max {
                     if let Some(leftmost_matching_cell) = leftmost_matching_cell {
-                        let left_child_page = contents.cell_table_interior_read_left_child_page(
-                            leftmost_matching_cell as usize,
-                        )?;
+                        let left_child_page = contents
+                            .cell_table_interior_read_left_child_page(leftmost_matching_cell)?;
                         // If we found our target rowid in the left subtree,
                         // we need to move the parent cell pointer forwards or backwards depending on the iteration direction.
                         // For example: since the internal node contains the max rowid of the left subtree, we need to move the
@@ -1331,7 +1326,7 @@ impl BTreeCursor {
                 } else {
                     nearest_matching_cell as i32 - 1
                 };
-                self.stack.set_cell_index(cell_idx as i32);
+                self.stack.set_cell_index(cell_idx);
                 return Ok(CursorResult::Ok(Some(cell_rowid)));
             }
 
@@ -1387,30 +1382,19 @@ impl BTreeCursor {
             }
 
             if found {
+                nearest_matching_cell = Some(cur_cell_idx as usize);
                 match iter_dir {
-                    IterationDirection::Forwards => {
-                        nearest_matching_cell = Some(cur_cell_idx as usize);
-                        max = cur_cell_idx - 1;
-                    }
-                    IterationDirection::Backwards => {
-                        nearest_matching_cell = Some(cur_cell_idx as usize);
-                        min = cur_cell_idx + 1;
-                    }
+                    IterationDirection::Forwards => max = cur_cell_idx - 1,
+                    IterationDirection::Backwards => min = cur_cell_idx + 1,
                 }
             } else {
-                if cmp.is_gt() {
-                    max = cur_cell_idx - 1;
-                } else if cmp.is_lt() {
-                    min = cur_cell_idx + 1;
-                } else {
-                    match iter_dir {
-                        IterationDirection::Forwards => {
-                            min = cur_cell_idx + 1;
-                        }
-                        IterationDirection::Backwards => {
-                            max = cur_cell_idx - 1;
-                        }
-                    }
+                match cmp {
+                    _ if cmp.is_gt() => max = cur_cell_idx - 1,
+                    _ if cmp.is_lt() => min = cur_cell_idx + 1,
+                    _ => match iter_dir {
+                        IterationDirection::Forwards => min = cur_cell_idx + 1,
+                        IterationDirection::Backwards => max = cur_cell_idx - 1,
+                    },
                 }
             }
         }
@@ -1468,7 +1452,7 @@ impl BTreeCursor {
                     }
                 };
                 let cell = contents.cell_get(
-                    nearest_matching_cell as usize,
+                    nearest_matching_cell,
                     payload_overflow_threshold_max(
                         contents.page_type(),
                         self.usable_space() as u16,
@@ -1551,30 +1535,19 @@ impl BTreeCursor {
                 SeekOp::LT => cmp.is_lt(),
             };
             if found {
+                nearest_matching_cell = Some(cur_cell_idx as usize);
                 match iter_dir {
-                    IterationDirection::Forwards => {
-                        nearest_matching_cell = Some(cur_cell_idx as usize);
-                        max = cur_cell_idx - 1;
-                    }
-                    IterationDirection::Backwards => {
-                        nearest_matching_cell = Some(cur_cell_idx as usize);
-                        min = cur_cell_idx + 1;
-                    }
+                    IterationDirection::Forwards => max = cur_cell_idx - 1,
+                    IterationDirection::Backwards => min = cur_cell_idx + 1,
                 }
             } else {
-                if cmp.is_gt() {
-                    max = cur_cell_idx - 1;
-                } else if cmp.is_lt() {
-                    min = cur_cell_idx + 1;
-                } else {
-                    match iter_dir {
-                        IterationDirection::Forwards => {
-                            min = cur_cell_idx + 1;
-                        }
-                        IterationDirection::Backwards => {
-                            max = cur_cell_idx - 1;
-                        }
-                    }
+                match cmp {
+                    _ if cmp.is_gt() => max = cur_cell_idx - 1,
+                    _ if cmp.is_lt() => min = cur_cell_idx + 1,
+                    _ => match iter_dir {
+                        IterationDirection::Forwards => min = cur_cell_idx + 1,
+                        IterationDirection::Backwards => max = cur_cell_idx - 1,
+                    },
                 }
             }
         }
@@ -1626,12 +1599,8 @@ impl BTreeCursor {
         self.move_to_root();
 
         match key {
-            SeekKey::TableRowId(rowid_key) => {
-                return self.tablebtree_move_to(rowid_key, cmp);
-            }
-            SeekKey::IndexKey(index_key) => {
-                return self.indexbtree_move_to(index_key, cmp);
-            }
+            SeekKey::TableRowId(rowid_key) => self.tablebtree_move_to(rowid_key, cmp),
+            SeekKey::IndexKey(index_key) => self.indexbtree_move_to(index_key, cmp),
         }
     }
 
@@ -2259,7 +2228,7 @@ impl BTreeCursor {
                         } else {
                             size_of_cell_to_remove_from_left
                         };
-                        new_page_sizes[i + 1] += size_of_cell_to_move_right as i64;
+                        new_page_sizes[i + 1] += size_of_cell_to_move_right;
                         cell_array.number_of_cells_per_page[i] -= 1;
                     }
 
@@ -2478,7 +2447,7 @@ impl BTreeCursor {
                     if !is_leaf_page {
                         // Interior
                         // Make this page's rightmost pointer point to pointer of divider cell before modification
-                        let previous_pointer_divider = read_u32(&divider_cell, 0);
+                        let previous_pointer_divider = read_u32(divider_cell, 0);
                         page.get_contents()
                             .write_u32(offset::BTREE_RIGHTMOST_PTR, previous_pointer_divider);
                         // divider cell now points to this page
@@ -2729,7 +2698,7 @@ impl BTreeCursor {
         i: usize,
         page: &std::sync::Arc<crate::Page>,
     ) {
-        let left_pointer = if parent_contents.overflow_cells.len() == 0 {
+        let left_pointer = if parent_contents.overflow_cells.is_empty() {
             let (cell_start, cell_len) = parent_contents.cell_get_raw_region(
                 balance_info.first_divider_cell + i,
                 payload_overflow_threshold_max(
@@ -2769,6 +2738,7 @@ impl BTreeCursor {
     }
 
     #[cfg(debug_assertions)]
+    #[allow(clippy::too_many_arguments)]
     fn post_balance_non_root_validation(
         &self,
         parent_page: &PageRef,
@@ -2923,7 +2893,7 @@ impl BTreeCursor {
                 let rightmost = read_u32(rightmost_pointer, 0);
                 debug_validate_cells!(parent_contents, self.usable_space() as u16);
 
-                if !pages_to_balance_new[0].is_some() {
+                if pages_to_balance_new[0].is_none() {
                     tracing::error!(
                         "balance_non_root(balance_shallower_incorrect_page, page_idx={})",
                         0
@@ -2931,8 +2901,13 @@ impl BTreeCursor {
                     valid = false;
                 }
 
-                for i in 1..sibling_count_new {
-                    if pages_to_balance_new[i].is_some() {
+                for (i, page) in pages_to_balance_new
+                    .iter()
+                    .enumerate()
+                    .skip(1)
+                    .take(sibling_count_new - 1)
+                {
+                    if page.is_some() {
                         tracing::error!(
                             "balance_non_root(balance_shallower_incorrect_page, page_idx={})",
                             i
@@ -2991,7 +2966,9 @@ impl BTreeCursor {
                     valid = false
                 }
 
-                for parent_cell_idx in 0..contents.cell_count() {
+                for (parent_cell_idx, cell_buf_in_array) in
+                    cells_debug.iter().enumerate().take(contents.cell_count())
+                {
                     let (parent_cell_start, parent_cell_len) = parent_contents.cell_get_raw_region(
                         parent_cell_idx,
                         payload_overflow_threshold_max(
@@ -3023,7 +3000,6 @@ impl BTreeCursor {
                     let parent_cell_buf = to_static_buf(
                         &mut parent_buf[parent_cell_start..parent_cell_start + parent_cell_len],
                     );
-                    let cell_buf_in_array = &cells_debug[parent_cell_idx];
 
                     if cell_buf != cell_buf_in_array || cell_buf != parent_cell_buf {
                         tracing::error!("balance_non_root(balance_shallower_cell_not_found_debug, page_id={}, cell_in_cell_array_idx={})",
@@ -3527,7 +3503,7 @@ impl BTreeCursor {
     /// 2. LoadPage -> load the page.
     /// 3. FindCell -> find the cell to be deleted in the page.
     /// 4. ClearOverflowPages -> Clear the overflow pages if there are any before dropping the cell, then if we are in a leaf page we just drop the cell in place.
-    /// if we are in interior page, we need to rotate keys in order to replace current cell (InteriorNodeReplacement).
+    ///     if we are in interior page, we need to rotate keys in order to replace current cell (InteriorNodeReplacement).
     /// 5. InteriorNodeReplacement -> we copy the left subtree leaf node into the deleted interior node's place.
     /// 6. WaitForBalancingToComplete -> perform balancing
     /// 7. SeekAfterBalancing -> adjust the cursor to a node that is closer to the deleted value. go to Finish
@@ -3565,11 +3541,9 @@ impl BTreeCursor {
                                 return Ok(CursorResult::Ok(()));
                             }
                         };
-                    } else {
-                        if self.reusable_immutable_record.borrow().is_none() {
-                            self.state = CursorState::None;
-                            return Ok(CursorResult::Ok(()));
-                        }
+                    } else if self.reusable_immutable_record.borrow().is_none() {
+                        self.state = CursorState::None;
+                        return Ok(CursorResult::Ok(()));
                     }
 
                     let delete_info = self.state.mut_delete_info().unwrap();
@@ -3856,7 +3830,7 @@ impl BTreeCursor {
             OwnedValue::Integer(i) => i,
             _ => unreachable!("btree tables are indexed by integers!"),
         };
-        let _ = return_if_io!(self.move_to(SeekKey::TableRowId(*int_key as u64), SeekOp::EQ));
+        return_if_io!(self.move_to(SeekKey::TableRowId(*int_key as u64), SeekOp::EQ));
         let page = self.stack.top();
         // TODO(pere): request load
         return_if_locked!(page);
@@ -4205,7 +4179,7 @@ impl BTreeCursor {
     ) -> Result<CursorResult<()>> {
         return_if_locked!(page_ref);
         let buf = page_ref.get().contents.as_mut().unwrap().as_ptr();
-        buf[dest_offset..dest_offset + new_payload.len()].copy_from_slice(&new_payload);
+        buf[dest_offset..dest_offset + new_payload.len()].copy_from_slice(new_payload);
 
         Ok(CursorResult::Ok(()))
     }
@@ -4223,10 +4197,7 @@ impl BTreeCursor {
     }
 
     pub fn is_write_in_progress(&self) -> bool {
-        match self.state {
-            CursorState::Write(_) => true,
-            _ => false,
-        }
+        matches!(self.state, CursorState::Write(_))
     }
 }
 
@@ -6843,9 +6814,8 @@ mod tests {
             .unwrap();
         }
 
-        match validate_btree(pager.clone(), root_page) {
-            (_, false) => panic!("Invalid B-tree after insertion"),
-            _ => {}
+        if let (_, false) = validate_btree(pager.clone(), root_page) {
+            panic!("Invalid B-tree after insertion");
         }
 
         // Delete records with 500 <= key <= 3500
@@ -6863,7 +6833,7 @@ mod tests {
 
         // Verify that records with key < 500 and key > 3500 still exist in the BTree.
         for i in 1..=10000 {
-            if i >= 500 && i <= 3500 {
+            if (500..=3500).contains(&i) {
                 continue;
             }
 
@@ -6896,12 +6866,12 @@ mod tests {
 
         let (pager, root_page) = empty_btree();
 
-        for i in 0..iterations {
+        for (i, huge_text) in huge_texts.iter().enumerate() {
             let mut cursor = BTreeCursor::new(None, pager.clone(), root_page);
             tracing::info!("INSERT INTO t VALUES ({});", i,);
             let value =
                 ImmutableRecord::from_registers(&[Register::OwnedValue(OwnedValue::Text(Text {
-                    value: huge_texts[i].as_bytes().to_vec(),
+                    value: huge_text.as_bytes().to_vec(),
                     subtype: crate::types::TextSubtype::Text,
                 }))]);
             tracing::trace!("before insert {}", i);

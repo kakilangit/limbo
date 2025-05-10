@@ -1109,14 +1109,11 @@ pub struct SmallVecIter<'a, T, const N: usize> {
     pos: usize,
 }
 
-impl<'a, T: Default + Copy, const N: usize> Iterator for SmallVecIter<'a, T, N> {
+impl<T: Default + Copy, const N: usize> Iterator for SmallVecIter<'_, T, N> {
     type Item = T;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.vec.get(self.pos).map(|item| {
-            self.pos += 1;
-            item
-        })
+        self.vec.get(self.pos).inspect(|_| self.pos += 1)
     }
 }
 
@@ -1415,6 +1412,7 @@ pub fn begin_read_wal_frame(
     Ok(())
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn begin_write_wal_frame(
     io: &Arc<dyn File>,
     offset: usize,
@@ -1633,8 +1631,8 @@ mod tests {
     #[case(&[0x40, 0x09, 0x21, 0xFB, 0x54, 0x44, 0x2D, 0x18], SerialType::f64(), OwnedValue::Float(std::f64::consts::PI))]
     #[case(&[1, 2], SerialType::const_int0(), OwnedValue::Integer(0))]
     #[case(&[65, 66], SerialType::const_int1(), OwnedValue::Integer(1))]
-    #[case(&[1, 2, 3], SerialType::blob(3), OwnedValue::Blob(vec![1, 2, 3].into()))]
-    #[case(&[], SerialType::blob(0), OwnedValue::Blob(vec![].into()))] // empty blob
+    #[case(&[1, 2, 3], SerialType::blob(3), OwnedValue::Blob(vec![1, 2, 3]))]
+    #[case(&[], SerialType::blob(0), OwnedValue::Blob(vec![]))] // empty blob
     #[case(&[65, 66, 67], SerialType::text(3), OwnedValue::build_text("ABC"))]
     #[case(&[0x80], SerialType::i8(), OwnedValue::Integer(-128))]
     #[case(&[0x80, 0], SerialType::i16(), OwnedValue::Integer(-32768))]
