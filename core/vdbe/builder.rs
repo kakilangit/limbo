@@ -277,14 +277,12 @@ impl ProgramBuilder {
                 .constant_spans
                 .iter()
                 .find(|span| span.0 <= *index_b && span.1 >= *index_b);
-            if a_span.is_some() && b_span.is_some() {
-                a_span.unwrap().0.cmp(&b_span.unwrap().0)
-            } else if a_span.is_some() {
-                Ordering::Greater
-            } else if b_span.is_some() {
-                Ordering::Less
-            } else {
-                Ordering::Equal
+
+            match (a_span, b_span) {
+                (Some(a), Some(b)) => a.0.cmp(&b.0),
+                (Some(_), None) => Ordering::Greater,
+                (None, Some(_)) => Ordering::Less,
+                (None, None) => Ordering::Equal,
             }
         });
         for resolved_offset in self.label_to_resolved_offset.iter_mut() {

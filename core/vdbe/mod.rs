@@ -66,10 +66,11 @@ use std::{
 ///
 /// In some cases, we want to jump to EXACTLY a specific instruction.
 /// - Example: a condition is not met, so we want to jump to wherever Halt is.
+///
 /// In other cases, we don't care what the exact instruction is, but we know that we
 /// want to jump to whatever comes AFTER a certain instruction.
 /// - Example: a Next instruction will want to jump to "whatever the start of the loop is",
-/// but it doesn't care what instruction that is.
+///     but it doesn't care what instruction that is.
 ///
 /// The reason this distinction is important is that we might reorder instructions that are
 /// constant at compile time, and when we do that, we need to change the offsets of any impacted
@@ -107,6 +108,7 @@ impl BranchOffset {
     }
 
     /// Returns the offset value. Panics if the branch offset is a label or placeholder.
+    #[allow(clippy::wrong_self_convention)]
     pub fn to_offset_int(&self) -> InsnReference {
         match self {
             BranchOffset::Label(v) => unreachable!("Unresolved label: {}", v),
@@ -118,6 +120,7 @@ impl BranchOffset {
     /// Returns the branch offset as a signed integer.
     /// Used in explain output, where we don't want to panic in case we have an unresolved
     /// label or placeholder.
+    #[allow(clippy::wrong_self_convention)]
     pub fn to_debug_int(&self) -> i32 {
         match self {
             BranchOffset::Label(v) => *v as i32,
@@ -342,7 +345,7 @@ impl ProgramState {
         self.json_cache.clear()
     }
 
-    pub fn get_cursor<'a>(&'a self, cursor_id: CursorID) -> std::cell::RefMut<'a, Cursor> {
+    pub fn get_cursor(&self, cursor_id: CursorID) -> std::cell::RefMut<'_, Cursor> {
         let cursors = self.cursors.borrow_mut();
         std::cell::RefMut::map(cursors, |c| {
             c.get_mut(cursor_id)
@@ -680,7 +683,7 @@ impl Row {
         T::from_value(value)
     }
 
-    pub fn get_value<'a>(&'a self, idx: usize) -> &'a OwnedValue {
+    pub fn get_value(&self, idx: usize) -> &OwnedValue {
         let value = unsafe { self.values.add(idx).as_ref().unwrap() };
         match value {
             Register::OwnedValue(owned_value) => owned_value,

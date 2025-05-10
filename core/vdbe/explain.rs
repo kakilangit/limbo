@@ -577,7 +577,7 @@ pub fn insn_to_str(
                 *err_code as i32,
                 0,
                 0,
-                OwnedValue::build_text(&description),
+                OwnedValue::build_text(description),
                 0,
                 "".to_string(),
             ),
