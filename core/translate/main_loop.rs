@@ -462,7 +462,7 @@ pub fn open_loop(
                             };
                             Some(emit_autoindex(
                                 program,
-                                &index,
+                                index,
                                 table_cursor_id
                                     .expect("an ephemeral index must have a source table cursor"),
                                 index_cursor_id
@@ -991,7 +991,7 @@ fn emit_seek(
             translate_expr_no_constant_opt(
                 program,
                 Some(tables),
-                &expr,
+                expr,
                 reg,
                 &t_ctx.resolver,
                 NoConstantOptReason::RegisterReuse,

@@ -102,7 +102,7 @@ impl WhereTerm {
     }
 
     fn eval_at(&self, join_order: &[JoinOrderMember]) -> Result<EvalAt> {
-        determine_where_to_eval_term(&self, join_order)
+        determine_where_to_eval_term(self, join_order)
     }
 }
 
@@ -266,21 +266,12 @@ pub enum SelectQueryType {
     },
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct JoinOrderMember {
     /// The index of the table in the plan's vector of [TableReference]
     pub table_no: usize,
     /// Whether this member is the right side of an OUTER JOIN
     pub is_outer: bool,
-}
-
-impl Default for JoinOrderMember {
-    fn default() -> Self {
-        Self {
-            table_no: 0,
-            is_outer: false,
-        }
-    }
 }
 
 #[derive(Debug, Clone)]
@@ -491,6 +482,12 @@ impl ColumnUsedMask {
     }
 }
 
+impl Default for ColumnUsedMask {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[derive(Clone, Debug)]
 pub enum Operation {
     // Scan operation
@@ -601,14 +598,12 @@ impl TableReference {
                         CursorType::BTreeTable(btree.clone()),
                     ))
                 };
-                let index_cursor_id = if let Some(index) = index {
-                    Some(program.alloc_cursor_id(
+                let index_cursor_id = index.map(|index| {
+                    program.alloc_cursor_id(
                         Some(index.name.clone()),
                         CursorType::BTreeIndex(index.clone()),
-                    ))
-                } else {
-                    None
-                };
+                    )
+                });
                 Ok((table_cursor_id, index_cursor_id))
             }
             Table::Virtual(virtual_table) => {
@@ -690,6 +685,7 @@ pub struct SeekDef {
     /// For example, given:
     /// - CREATE INDEX i ON t (x, y desc)
     /// - SELECT * FROM t WHERE x = 1 AND y >= 30
+    ///
     /// The key is [(1, ASC), (30, DESC)]
     pub key: Vec<(ast::Expr, SortOrder)>,
     /// The condition to use when seeking. See [SeekKey] for more details.
@@ -711,6 +707,7 @@ pub struct SeekKey {
     /// For example, given:
     /// - CREATE INDEX i ON t (x, y)
     /// - SELECT * FROM t WHERE x = 1 AND y < 30
+    ///
     /// We want to seek to the first row where x = 1, and then iterate forwards.
     /// In this case, the seek key is GT(1, NULL) since NULL is always LT in index key comparisons.
     /// We can't use just GT(1) because in index key comparisons, only the given number of columns are compared,

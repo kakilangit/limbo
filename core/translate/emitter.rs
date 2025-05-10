@@ -278,7 +278,7 @@ pub fn emit_query<'a>(
     }
 
     if let Some(ref group_by) = plan.group_by {
-        init_group_by(program, t_ctx, group_by, &plan)?;
+        init_group_by(program, t_ctx, group_by, plan)?;
     }
     init_loop(
         program,
@@ -736,14 +736,14 @@ fn emit_update_insns(
                 )?;
             } else {
                 program.emit_insn(Insn::Column {
-                    cursor_id: cursor_id,
+                    cursor_id,
                     column: column.pos_in_table,
                     dest: index_record_reg_start + idx,
                 });
             }
         }
         program.emit_insn(Insn::RowId {
-            cursor_id: cursor_id,
+            cursor_id,
             dest: index_record_reg_start + index.columns.len(),
         });
         let index_record_reg = program.alloc_register();

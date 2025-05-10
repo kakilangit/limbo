@@ -50,11 +50,7 @@ pub fn prepare_delete_plan(
         crate::bail_corrupt_error!("Table is neither a virtual table nor a btree table");
     };
     let name = tbl_name.name.0.as_str().to_string();
-    let indexes = schema
-        .get_indices(table.get_name())
-        .iter()
-        .cloned()
-        .collect();
+    let indexes = schema.get_indices(table.get_name()).to_vec();
     let mut table_references = vec![TableReference {
         table,
         identifier: name,

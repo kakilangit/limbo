@@ -282,10 +282,10 @@ pub fn bind_column_references(
     }
 }
 
-fn parse_from_clause_table<'a>(
+fn parse_from_clause_table(
     schema: &Schema,
     table: ast::SelectTable,
-    scope: &mut Scope<'a>,
+    scope: &mut Scope<'_>,
     syms: &SymbolTable,
 ) -> Result<()> {
     match table {
@@ -585,11 +585,11 @@ pub fn determine_where_to_eval_term(
         ));
     }
 
-    return determine_where_to_eval_expr(&term.expr, join_order);
+    determine_where_to_eval_expr(&term.expr, join_order)
 }
 
-pub fn determine_where_to_eval_expr<'a>(
-    expr: &'a Expr,
+pub fn determine_where_to_eval_expr(
+    expr: &'_ Expr,
     join_order: &[JoinOrderMember],
 ) -> Result<EvalAt> {
     let mut eval_at: EvalAt = EvalAt::BeforeLoop;
@@ -706,11 +706,11 @@ pub fn determine_where_to_eval_expr<'a>(
     Ok(eval_at)
 }
 
-fn parse_join<'a>(
+fn parse_join(
     schema: &Schema,
     join: ast::JoinedSelectTable,
     syms: &SymbolTable,
-    scope: &mut Scope<'a>,
+    scope: &mut Scope<'_>,
     out_where_clause: &mut Vec<WhereTerm>,
 ) -> Result<()> {
     let ast::JoinedSelectTable {

@@ -1851,11 +1851,8 @@ pub fn translate_expr(
                             } else {
                                 Some(program.resolve_cursor_id(&table_reference.identifier))
                             };
-                            let index_cursor_id = if let Some(index) = index {
-                                Some(program.resolve_cursor_id(&index.name))
-                            } else {
-                                None
-                            };
+                            let index_cursor_id =
+                                index.map(|idx| program.resolve_cursor_id(&idx.name));
                             if *is_rowid_alias {
                                 if let Some(index_cursor_id) = index_cursor_id {
                                     program.emit_insn(Insn::IdxRowId {
@@ -2083,26 +2080,24 @@ pub fn translate_expr(
                         value: i64::MIN,
                         dest: target_register,
                     });
+                } else if numeric_value.starts_with("0x") || numeric_value.starts_with("0X") {
+                    // must be a hex decimal
+                    let int_value = i64::from_str_radix(&numeric_value[2..], 16)?;
+                    program.emit_insn(Insn::Integer {
+                        value: -int_value,
+                        dest: target_register,
+                    });
+                } else if let Ok(value) = numeric_value.parse::<i64>() {
+                    program.emit_insn(Insn::Integer {
+                        value: -value,
+                        dest: target_register,
+                    });
                 } else {
-                    if numeric_value.starts_with("0x") || numeric_value.starts_with("0X") {
-                        // must be a hex decimal
-                        let int_value = i64::from_str_radix(&numeric_value[2..], 16)?;
-                        program.emit_insn(Insn::Integer {
-                            value: -int_value,
-                            dest: target_register,
-                        });
-                    } else if let Ok(value) = numeric_value.parse::<i64>() {
-                        program.emit_insn(Insn::Integer {
-                            value: value * -1,
-                            dest: target_register,
-                        });
-                    } else {
-                        let value = numeric_value.parse::<f64>()?;
-                        program.emit_insn(Insn::Real {
-                            value: value * -1 as f64,
-                            dest: target_register,
-                        });
-                    }
+                    let value = numeric_value.parse::<f64>()?;
+                    program.emit_insn(Insn::Real {
+                        value: -value,
+                        dest: target_register,
+                    });
                 }
                 Ok(target_register)
             }
@@ -2451,7 +2446,7 @@ fn translate_like_base(
     };
     match op {
         ast::LikeOperator::Like | ast::LikeOperator::Glob => {
-            let arg_count = if matches!(escape, Some(_)) { 3 } else { 2 };
+            let arg_count = if escape.is_some() { 3 } else { 2 };
             let start_reg = program.alloc_registers(arg_count);
             let mut constant_mask = 0;
             translate_expr(program, referenced_tables, lhs, start_reg + 1, resolver)?;

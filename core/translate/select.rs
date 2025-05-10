@@ -452,13 +452,8 @@ fn estimate_num_instructions(select: &SelectPlan) -> usize {
     let order_by_instructions = select.order_by.is_some() as usize * 10;
     let condition_instructions = select.where_clause.len() * 3;
 
-    let num_instructions = 20
-        + table_instructions
-        + group_by_instructions
-        + order_by_instructions
-        + condition_instructions;
-
-    num_instructions
+    // num_instructions
+    20 + table_instructions + group_by_instructions + order_by_instructions + condition_instructions
 }
 
 fn estimate_num_labels(select: &SelectPlan) -> usize {
@@ -479,8 +474,6 @@ fn estimate_num_labels(select: &SelectPlan) -> usize {
     let order_by_labels = select.order_by.is_some() as usize * 10;
     let condition_labels = select.where_clause.len() * 2;
 
-    let num_labels =
-        init_halt_labels + table_labels + group_by_labels + order_by_labels + condition_labels;
-
-    num_labels
+    // num_labels
+    init_halt_labels + table_labels + group_by_labels + order_by_labels + condition_labels
 }

@@ -630,10 +630,10 @@ pub fn group_by_create_column_register_mapping(
     }
 
     // Handle other non-aggregate columns that aren't part of GROUP BY and not part of Aggregation function
-    for i in group_by_count..group_by_count + non_group_by_non_agg_column_count {
+    (group_by_count..group_by_count + non_group_by_non_agg_column_count).for_each(|i| {
         column_register_mapping[i] = Some(next_reg);
         next_reg += 1;
-    }
+    });
 
     column_register_mapping
 }
@@ -641,9 +641,9 @@ pub fn group_by_create_column_register_mapping(
 /// Emits the bytecode for processing the aggregation phase of a GROUP BY clause.
 /// This is called either when:
 /// 1. the main query execution loop has finished processing,
-/// and we now have data in the GROUP BY sorter.
+///     and we now have data in the GROUP BY sorter.
 /// 2. the rows are already sorted in the order that the GROUP BY keys are defined,
-/// and we can start aggregating inside the main loop.
+///     and we can start aggregating inside the main loop.
 pub fn group_by_agg_phase<'a>(
     program: &mut ProgramBuilder,
     t_ctx: &mut TranslateCtx<'a>,

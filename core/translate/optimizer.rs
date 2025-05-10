@@ -107,7 +107,7 @@ fn eliminate_orderby_like_groupby(plan: &mut SelectPlan) -> Result<()> {
     if plan.order_by.is_none() | plan.group_by.is_none() {
         return Ok(());
     }
-    if plan.table_references.len() == 0 {
+    if plan.table_references.is_empty() {
         return Ok(());
     }
 
@@ -554,7 +554,7 @@ impl Optimizable for ast::Expr {
                 let table_ref = &tables[*table];
                 let columns = table_ref.columns();
                 let column = &columns[*column];
-                return column.primary_key || column.notnull;
+                column.primary_key || column.notnull
             }
             Expr::RowId { .. } => true,
             Expr::InList { lhs, rhs, .. } => {
@@ -979,14 +979,14 @@ pub fn try_extract_index_search_from_where_clause(
         where_clause.remove(constraint.position_in_where_clause.0);
     }
 
-    return Ok(Some(Search::Seek {
+    Ok(Some(Search::Seek {
         index: best_index.index,
         seek_def,
-    }));
+    }))
 }
 
 fn ephemeral_index_estimate_cost(
-    where_clause: &mut Vec<WhereTerm>,
+    where_clause: &mut [WhereTerm],
     table_reference: &TableReference,
     table_index: usize,
     join_order: &[JoinOrderMember],
@@ -1230,10 +1230,10 @@ fn is_potential_index_constraint(
     // - WHERE t.x > t.y
     // - WHERE t.x + 1 > t.y - 5
     // - WHERE t.x = (t.x)
-    let Ok(eval_at_left) = determine_where_to_eval_expr(&lhs, join_order) else {
+    let Ok(eval_at_left) = determine_where_to_eval_expr(lhs, join_order) else {
         return false;
     };
-    let Ok(eval_at_right) = determine_where_to_eval_expr(&rhs, join_order) else {
+    let Ok(eval_at_right) = determine_where_to_eval_expr(rhs, join_order) else {
         return false;
     };
     if eval_at_left == EvalAt::Loop(table_index) && eval_at_right == EvalAt::Loop(table_index) {
@@ -1247,7 +1247,7 @@ fn is_potential_index_constraint(
 /// E.g. for index (a,b,c) to be fully used, there must be a [WhereTerm] for each of a, b, and c.
 /// If e.g. only a and c are present, then only the first column 'a' of the index will be used.
 fn find_index_constraints(
-    where_clause: &mut Vec<WhereTerm>,
+    where_clause: &mut [WhereTerm],
     table_index: usize,
     index: &Arc<Index>,
     join_order: &[JoinOrderMember],
@@ -1314,7 +1314,7 @@ fn find_index_constraints(
 pub fn build_seek_def_from_index_constraints(
     constraints: &[IndexConstraint],
     iter_dir: IterationDirection,
-    where_clause: &mut Vec<WhereTerm>,
+    where_clause: &mut [WhereTerm],
 ) -> Result<SeekDef> {
     assert!(
         !constraints.is_empty(),
@@ -1362,11 +1362,10 @@ pub fn build_seek_def_from_index_constraints(
 /// But to illustrate the general idea, consider the following examples:
 ///
 /// 1. For example, having two conditions like (x>10 AND y>20) cannot be used as a valid [SeekKey] GT(x:10, y:20)
-/// because the first row greater than (x:10, y:20) might be (x:10, y:21), which does not satisfy the where clause.
-/// In this case, only GT(x:10) must be used as the [SeekKey], and rows with y <= 20 must be filtered as a regular condition expression for each value of x.
-///
+///     because the first row greater than (x:10, y:20) might be (x:10, y:21), which does not satisfy the where clause.
+///     In this case, only GT(x:10) must be used as the [SeekKey], and rows with y <= 20 must be filtered as a regular condition expression for each value of x.
 /// 2. In contrast, having (x=10 AND y>20) forms a valid index key GT(x:10, y:20) because after the seek, we can simply terminate as soon as x > 10,
-/// i.e. use GT(x:10, y:20) as the [SeekKey] and GT(x:10) as the [TerminationKey].
+///     i.e. use GT(x:10, y:20) as the [SeekKey] and GT(x:10) as the [TerminationKey].
 ///
 /// The preceding examples are for an ascending index. The logic is similar for descending indexes, but an important distinction is that
 /// since a descending index is laid out in reverse order, the comparison operators are reversed, e.g. LT becomes GT, LE becomes GE, etc.
